@@ -1,0 +1,30 @@
+export const BOBING_RULES = {
+  variantName: "晋江常见玩法",
+  allowFourOfKindBonusFour: true,
+  ranks: {
+    zhuangyuan: 1,
+    duitang: 2,
+    sanhong: 3,
+    sijin: 4,
+    erju: 5,
+    yixiu: 6,
+    none: 7,
+  },
+  zhuangyuanSubtypeOrder: [
+    "六勃红",
+    "六勃黑",
+    "状元插金花",
+    "五红",
+    "五子",
+    "四红",
+  ],
+  labels: {
+    zhuangyuan: "状元",
+    duitang: "对堂",
+    sanhong: "三红",
+    sijin: "四进",
+    erju: "二举",
+    yixiu: "一秀",
+    none: "无奖",
+  },
+};
