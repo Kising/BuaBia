@@ -14,6 +14,9 @@ function normalizeEntry(entry) {
     displayName: entry.displayName.slice(0, 30),
     rank: Number.isFinite(entry.rank) ? entry.rank : 99,
     cheatMode: entry.cheatMode === true,
+    sessionId: typeof entry.sessionId === "string" ? entry.sessionId : null,
+    playerId: typeof entry.playerId === "string" ? entry.playerId : null,
+    playerName: typeof entry.playerName === "string" ? entry.playerName.slice(0, 12) : null,
   };
 }
 
@@ -36,6 +39,9 @@ export function appendRollHistory(storage, key, result, limit = 40, timestamp = 
     displayName: result.displayName,
     rank: result.rank,
     cheatMode: metadata.cheatMode === true,
+    sessionId: metadata.sessionId || null,
+    playerId: metadata.playerId || null,
+    playerName: metadata.playerName || null,
   };
   const history = [entry, ...loadRollHistory(storage, key, limit)].slice(0, limit);
 

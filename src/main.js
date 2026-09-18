@@ -11,6 +11,13 @@ import {
   loadRollHistory,
   summarizeRollHistory,
 } from "./history/rollHistory.js";
+import {
+  advanceTurn,
+  buildMultiplayerStandings,
+  createMultiplayerSession,
+  loadMultiplayerSession,
+  saveMultiplayerSession,
+} from "./multiplayer/multiplayer.js";
 
 const app = document.querySelector("#app");
 const storedSound = localStorage.getItem(SITE_CONFIG.storageKeys.soundEnabled);
@@ -21,6 +28,7 @@ const state = {
   soundEnabled: storedSound === null ? true : storedSound === "true",
   cheatMode: storedCheatMode === "true",
   lastResult: null,
+  multiplayer: loadMultiplayerSession(localStorage, SITE_CONFIG.storageKeys.multiplayerSession),
   history: loadRollHistory(
     localStorage,
     SITE_CONFIG.storageKeys.rollHistory,
@@ -38,6 +46,7 @@ app.innerHTML = `
       <nav class="header-actions" aria-label="页面操作">
         <button class="icon-button sound-toggle" type="button" aria-label="关闭音效" aria-pressed="true">🔊</button>
         <button class="cheat-toggle" type="button" aria-label="开启 Cheat 模式" aria-pressed="false" title="大幅提高红四出现概率"><span aria-hidden="true">四</span><small>Cheat</small></button>
+        <button class="multiplayer-button" type="button"><span aria-hidden="true">众</span><small>多人</small></button>
         <button class="rules-button" type="button">博饼规则</button>
       </nav>
     </header>
@@ -53,6 +62,11 @@ app.innerHTML = `
       </section>
 
       <section class="control-panel" aria-live="polite">
+        <div class="turn-banner" hidden>
+          <span class="turn-banner__round"></span>
+          <strong class="turn-banner__player"></strong>
+          <span class="turn-banner__hint">请把手机交给这位玩家</span>
+        </div>
         <div class="result-card" data-empty="true">
           <p class="eyebrow">本轮结果</p>
           <h1 class="result-title">请开始博饼</h1>
@@ -62,6 +76,12 @@ app.innerHTML = `
 
         <button class="primary-action" type="button">开始博饼</button>
         <p class="hint">支持 Space / Enter 触发</p>
+        <p class="responsible-inline">游戏仅供娱乐，请勿参与赌博行为。</p>
+
+        <section class="multiplayer-scoreboard" hidden aria-label="多人模式积分">
+          <div class="scoreboard-heading"><span>本局战况</span><strong class="scoreboard-champion">状元待定</strong></div>
+          <div class="scoreboard-players"></div>
+        </section>
 
         <details class="history-panel">
           <summary class="history-toggle">
@@ -95,6 +115,26 @@ app.innerHTML = `
   </div>
 
   <div class="modal-backdrop" hidden></div>
+  <aside class="multiplayer-modal" role="dialog" aria-modal="true" aria-labelledby="multiplayer-title" hidden>
+    <div class="rules-modal__handle" aria-hidden="true"></div>
+    <div class="rules-modal__header">
+      <div><p class="eyebrow">Local Party</p><h2 id="multiplayer-title">本地多人模式</h2></div>
+      <button class="icon-button multiplayer-close" type="button" aria-label="关闭多人模式设置">×</button>
+    </div>
+    <div class="multiplayer-modal__body">
+      <form class="multiplayer-form">
+        <label class="player-count-label" for="player-count">玩家人数 <span>2</span></label>
+        <input id="player-count" name="playerCount" type="range" min="2" max="8" value="2" />
+        <div class="player-name-fields"></div>
+        <button class="multiplayer-start" type="submit">开始多人博饼</button>
+      </form>
+      <div class="multiplayer-active" hidden>
+        <p class="multiplayer-active__summary"></p>
+        <button class="multiplayer-stop" type="button">结束本局并返回单人模式</button>
+      </div>
+      <p class="responsible-notice">游戏仅供娱乐，请勿参与赌博行为。</p>
+    </div>
+  </aside>
   <aside class="rules-modal" role="dialog" aria-modal="true" aria-labelledby="rules-title" hidden>
     <div class="rules-modal__handle" aria-hidden="true"></div>
     <div class="rules-modal__header">
@@ -138,6 +178,7 @@ app.innerHTML = `
         <h3>Developer</h3>
         <p>${SITE_CONFIG.developer}</p>
       </section>
+      <p class="responsible-notice">游戏仅供娱乐，请勿参与赌博行为。</p>
     </div>
   </aside>
 `;
@@ -157,12 +198,30 @@ function ruleRow(name, values, description) {
 const canvas = document.querySelector("#dice-canvas");
 const stage = document.querySelector(".game-stage");
 const resultCard = document.querySelector(".result-card");
+const resultEyebrow = resultCard.querySelector(".eyebrow");
 const resultTitle = document.querySelector(".result-title");
 const resultDescription = document.querySelector(".result-description");
 const resultDice = document.querySelector(".result-dice");
 const primaryAction = document.querySelector(".primary-action");
 const soundToggle = document.querySelector(".sound-toggle");
 const cheatToggle = document.querySelector(".cheat-toggle");
+const multiplayerButton = document.querySelector(".multiplayer-button");
+const multiplayerModal = document.querySelector(".multiplayer-modal");
+const multiplayerClose = document.querySelector(".multiplayer-close");
+const multiplayerForm = document.querySelector(".multiplayer-form");
+const multiplayerActive = document.querySelector(".multiplayer-active");
+const multiplayerActiveSummary = document.querySelector(".multiplayer-active__summary");
+const multiplayerStop = document.querySelector(".multiplayer-stop");
+const playerCount = document.querySelector("#player-count");
+const playerCountValue = document.querySelector(".player-count-label span");
+const playerNameFields = document.querySelector(".player-name-fields");
+const turnBanner = document.querySelector(".turn-banner");
+const turnRound = document.querySelector(".turn-banner__round");
+const turnPlayer = document.querySelector(".turn-banner__player");
+const turnHint = document.querySelector(".turn-banner__hint");
+const scoreboard = document.querySelector(".multiplayer-scoreboard");
+const scoreboardChampion = document.querySelector(".scoreboard-champion");
+const scoreboardPlayers = document.querySelector(".scoreboard-players");
 const rulesButton = document.querySelector(".rules-button");
 const rulesModal = document.querySelector(".rules-modal");
 const rulesClose = document.querySelector(".rules-close");
@@ -200,15 +259,22 @@ if (GAME_CONFIG.debugPanel) {
 
 syncSoundButton();
 syncCheatButton();
+renderPlayerNameFields();
+renderMultiplayer();
 renderHistory();
 historyPanel.open = state.history.length > 0;
 
 primaryAction.addEventListener("click", () => roll());
 soundToggle.addEventListener("click", toggleSound);
 cheatToggle.addEventListener("click", toggleCheatMode);
+multiplayerButton.addEventListener("click", openMultiplayer);
+multiplayerClose.addEventListener("click", closeMultiplayer);
+multiplayerForm.addEventListener("submit", startMultiplayer);
+multiplayerStop.addEventListener("click", stopMultiplayer);
+playerCount.addEventListener("input", renderPlayerNameFields);
 rulesButton.addEventListener("click", openRules);
 rulesClose.addEventListener("click", closeRules);
-modalBackdrop.addEventListener("click", closeRules);
+modalBackdrop.addEventListener("click", closeOpenModal);
 document.addEventListener("keydown", handleKeyDown);
 debugPanel.addEventListener("submit", handleDebug);
 historyClear.addEventListener("click", handleClearHistory);
@@ -231,6 +297,14 @@ async function roll() {
   audio.playStartChime();
 
   const cheatModeForRoll = state.cheatMode;
+  const activePlayer = state.multiplayer?.players[state.multiplayer.currentIndex] || null;
+  if (activePlayer) {
+    resultEyebrow.textContent = `${activePlayer.name} · 本轮结果`;
+    turnHint.textContent = "正在博饼";
+    turnPlayer.textContent = activePlayer.name;
+  } else {
+    resultEyebrow.textContent = "本轮结果";
+  }
   const dice = await scene.roll({ cheatMode: cheatModeForRoll });
   const result = evaluateBobing(dice);
 
@@ -243,14 +317,26 @@ async function roll() {
       result,
       GAME_CONFIG.maxHistoryEntries,
       Date.now(),
-      { cheatMode: cheatModeForRoll },
+      {
+        cheatMode: cheatModeForRoll,
+        sessionId: state.multiplayer?.id,
+        playerId: activePlayer?.id,
+        playerName: activePlayer?.name,
+      },
     );
+    if (state.multiplayer) {
+      state.multiplayer = advanceTurn(state.multiplayer);
+      saveMultiplayerSession(localStorage, SITE_CONFIG.storageKeys.multiplayerSession, state.multiplayer);
+      renderMultiplayer();
+    }
     renderHistory();
     state.rolling = false;
     state.hasRolled = true;
     primaryAction.disabled = false;
     cheatToggle.disabled = false;
-    primaryAction.textContent = "再博一次";
+    primaryAction.textContent = state.multiplayer
+      ? `${state.multiplayer.players[state.multiplayer.currentIndex].name} 开始博饼`
+      : "再博一次";
   }, GAME_CONFIG.resultDelayMs);
 }
 
@@ -290,6 +376,12 @@ function renderHistory() {
       hour12: false,
     }).format(entry.timestamp);
     resultBlock.append(name, time);
+    if (entry.playerName) {
+      const player = document.createElement("span");
+      player.className = "history-player";
+      player.textContent = entry.playerName;
+      resultBlock.prepend(player);
+    }
 
     const dice = document.createElement("div");
     dice.className = "history-item__dice";
@@ -393,7 +485,104 @@ function syncCheatButton() {
   cheatToggle.setAttribute("aria-pressed", String(state.cheatMode));
 }
 
+function renderPlayerNameFields() {
+  const count = Number(playerCount.value);
+  const existing = [...playerNameFields.querySelectorAll("input")].map((input) => input.value);
+  playerCountValue.textContent = String(count);
+  playerNameFields.replaceChildren();
+  for (let index = 0; index < count; index += 1) {
+    const label = document.createElement("label");
+    label.textContent = `玩家 ${index + 1}`;
+    const input = document.createElement("input");
+    input.name = `player-${index}`;
+    input.maxLength = 12;
+    input.required = true;
+    input.autocomplete = "off";
+    input.value = existing[index] || `玩家 ${index + 1}`;
+    label.append(input);
+    playerNameFields.append(label);
+  }
+}
+
+function openMultiplayer() {
+  multiplayerForm.hidden = Boolean(state.multiplayer);
+  multiplayerActive.hidden = !state.multiplayer;
+  if (state.multiplayer) {
+    multiplayerActiveSummary.textContent = `第 ${state.multiplayer.round} 轮 · ${state.multiplayer.players.length} 位玩家 · 当前轮到 ${state.multiplayer.players[state.multiplayer.currentIndex].name}`;
+  }
+  modalBackdrop.hidden = false;
+  multiplayerModal.hidden = false;
+  document.body.classList.add("modal-open");
+  (state.multiplayer ? multiplayerStop : playerCount).focus();
+}
+
+function closeMultiplayer() {
+  multiplayerModal.hidden = true;
+  modalBackdrop.hidden = rulesModal.hidden;
+  document.body.classList.toggle("modal-open", !rulesModal.hidden);
+  multiplayerButton.focus();
+}
+
+function startMultiplayer(event) {
+  event.preventDefault();
+  const names = [...playerNameFields.querySelectorAll("input")].map((input) => input.value);
+  state.multiplayer = createMultiplayerSession(names);
+  saveMultiplayerSession(localStorage, SITE_CONFIG.storageKeys.multiplayerSession, state.multiplayer);
+  state.hasRolled = false;
+  renderMultiplayer();
+  closeMultiplayer();
+}
+
+function stopMultiplayer() {
+  state.multiplayer = saveMultiplayerSession(
+    localStorage,
+    SITE_CONFIG.storageKeys.multiplayerSession,
+    null,
+  );
+  state.hasRolled = false;
+  renderMultiplayer();
+  closeMultiplayer();
+}
+
+function renderMultiplayer() {
+  const active = Boolean(state.multiplayer);
+  multiplayerButton.classList.toggle("multiplayer-button--active", active);
+  multiplayerButton.setAttribute("aria-pressed", String(active));
+  turnBanner.hidden = !active;
+  scoreboard.hidden = !active;
+  if (!active) {
+    primaryAction.textContent = state.hasRolled ? "再博一次" : "开始博饼";
+    return;
+  }
+
+  const player = state.multiplayer.players[state.multiplayer.currentIndex];
+  turnRound.textContent = `第 ${state.multiplayer.round} 轮`;
+  turnPlayer.textContent = player.name;
+  turnHint.textContent = "请把手机交给这位玩家";
+  primaryAction.textContent = `${player.name} 开始博饼`;
+
+  const standings = buildMultiplayerStandings(state.multiplayer, state.history);
+  scoreboardChampion.textContent = standings.champion
+    ? `当前状元：${standings.champion.player.name} · ${standings.champion.result.displayName}`
+    : "当前状元：尚未产生";
+  scoreboardPlayers.replaceChildren();
+  standings.players.forEach((standing, index) => {
+    const row = document.createElement("div");
+    row.className = "scoreboard-player";
+    if (standing.id === player.id) row.classList.add("scoreboard-player--current");
+    const order = document.createElement("span");
+    order.textContent = String(index + 1).padStart(2, "0");
+    const name = document.createElement("strong");
+    name.textContent = standing.name;
+    const tally = document.createElement("span");
+    tally.textContent = `${standing.rolls} 博 · ${standing.rewardSummary || "暂无奖励"}`;
+    row.append(order, name, tally);
+    scoreboardPlayers.append(row);
+  });
+}
+
 function openRules() {
+  multiplayerModal.hidden = true;
   modalBackdrop.hidden = false;
   rulesModal.hidden = false;
   document.body.classList.add("modal-open");
@@ -407,13 +596,18 @@ function closeRules() {
   rulesButton.focus();
 }
 
+function closeOpenModal() {
+  if (!multiplayerModal.hidden) closeMultiplayer();
+  else if (!rulesModal.hidden) closeRules();
+}
+
 function handleKeyDown(event) {
-  if (event.key === "Escape" && !rulesModal.hidden) {
-    closeRules();
+  if (event.key === "Escape" && (!rulesModal.hidden || !multiplayerModal.hidden)) {
+    closeOpenModal();
     return;
   }
   if (event.target instanceof HTMLInputElement || event.target instanceof HTMLButtonElement) return;
-  if ((event.key === " " || event.key === "Enter") && rulesModal.hidden) {
+  if ((event.key === " " || event.key === "Enter") && rulesModal.hidden && multiplayerModal.hidden) {
     event.preventDefault();
     roll();
   }

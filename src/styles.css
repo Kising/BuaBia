@@ -110,9 +110,12 @@ button {
 
 .icon-button,
 .cheat-toggle,
+.multiplayer-button,
 .rules-button,
 .primary-action,
-.debug-panel button {
+.debug-panel button,
+.multiplayer-start,
+.multiplayer-stop {
   border: 1px solid var(--line);
   cursor: pointer;
   min-height: 44px;
@@ -125,12 +128,41 @@ button {
 
 .icon-button:focus-visible,
 .cheat-toggle:focus-visible,
+.multiplayer-button:focus-visible,
 .rules-button:focus-visible,
 .primary-action:focus-visible,
 .debug-panel input:focus-visible,
 .debug-panel button:focus-visible {
   outline: 3px solid rgba(185, 145, 69, 0.55);
   outline-offset: 3px;
+}
+
+.multiplayer-button {
+  min-width: 62px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.28rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.42);
+  color: var(--muted);
+}
+
+.multiplayer-button span {
+  color: var(--rouge-deep);
+  font-weight: 800;
+}
+
+.multiplayer-button small {
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.multiplayer-button--active {
+  border-color: rgba(185, 145, 69, 0.62);
+  background: rgba(185, 145, 69, 0.13);
+  color: var(--ink);
 }
 
 .icon-button {
@@ -313,6 +345,96 @@ button {
   align-content: start;
 }
 
+.turn-banner {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  gap: 0.12rem 0.65rem;
+  padding: 0.72rem 0.85rem;
+  border-left: 3px solid var(--gold);
+  background: rgba(255, 255, 255, 0.36);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.turn-banner[hidden],
+.multiplayer-scoreboard[hidden] {
+  display: none;
+}
+
+.turn-banner__round {
+  color: var(--gold);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.turn-banner__player {
+  color: var(--rouge-deep);
+  font-size: 1.08rem;
+}
+
+.turn-banner__hint {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.multiplayer-scoreboard {
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 0.8rem 0;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.scoreboard-heading {
+  display: grid;
+  gap: 0.22rem;
+  margin-bottom: 0.55rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.scoreboard-heading strong {
+  color: var(--rouge-deep);
+  font-size: 0.86rem;
+}
+
+.scoreboard-players {
+  display: grid;
+  gap: 0.24rem;
+}
+
+.scoreboard-player {
+  display: grid;
+  grid-template-columns: 1.7rem minmax(4rem, 0.7fr) minmax(0, 1.3fr);
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2rem;
+  padding: 0 0.35rem;
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.scoreboard-player strong {
+  overflow: hidden;
+  color: var(--ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scoreboard-player--current {
+  background: rgba(185, 145, 69, 0.12);
+  color: var(--rouge-deep);
+}
+
+.history-player {
+  overflow: hidden;
+  color: var(--gold);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .result-card {
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
@@ -480,6 +602,14 @@ button {
   color: var(--muted);
   font-family: ui-sans-serif, system-ui, sans-serif;
   font-size: 0.84rem;
+  text-align: center;
+}
+
+.responsible-inline {
+  margin: -0.25rem 0 0;
+  color: var(--muted);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.7rem;
   text-align: center;
 }
 
@@ -698,7 +828,8 @@ button {
   backdrop-filter: blur(8px);
 }
 
-.rules-modal {
+.rules-modal,
+.multiplayer-modal {
   position: fixed;
   left: 0;
   right: 0;
@@ -710,6 +841,91 @@ button {
   background: rgba(251, 247, 237, 0.97);
   box-shadow: 0 -2rem 5rem rgba(39, 27, 24, 0.28);
   animation: sheetIn 220ms ease both;
+}
+
+.multiplayer-modal__body {
+  max-height: calc(88dvh - 6.5rem);
+  overflow: auto;
+  padding: 1rem 1rem calc(env(safe-area-inset-bottom) + 1.2rem);
+}
+
+.multiplayer-form,
+.multiplayer-active {
+  display: grid;
+  gap: 1rem;
+}
+
+.multiplayer-form[hidden],
+.multiplayer-active[hidden],
+.multiplayer-modal[hidden],
+.rules-modal[hidden],
+.modal-backdrop[hidden] {
+  display: none;
+}
+
+.player-count-label {
+  display: flex;
+  justify-content: space-between;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+#player-count {
+  width: 100%;
+  accent-color: var(--rouge);
+}
+
+.player-name-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.player-name-fields label {
+  display: grid;
+  gap: 0.32rem;
+  color: var(--muted);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.75rem;
+}
+
+.player-name-fields input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.58);
+  color: var(--ink);
+  padding: 0 0.7rem;
+}
+
+.multiplayer-start,
+.multiplayer-stop {
+  min-height: 3rem;
+  border-radius: 6px;
+  background: var(--rouge);
+  color: #fff8ea;
+}
+
+.multiplayer-stop {
+  background: transparent;
+  color: var(--rouge-deep);
+}
+
+.multiplayer-active__summary {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.responsible-notice {
+  margin: 1.2rem 0 0;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.76rem;
+  text-align: center;
 }
 
 .rules-modal__handle {
@@ -730,12 +946,17 @@ button {
 }
 
 .rules-modal h2,
-.rules-modal h3 {
+.rules-modal h3,
+.multiplayer-modal h2 {
   margin: 0;
   letter-spacing: 0;
 }
 
 .rules-modal h2 {
+  font-size: 1.6rem;
+}
+
+.multiplayer-modal h2 {
   font-size: 1.6rem;
 }
 
@@ -886,7 +1107,8 @@ button {
     height: 1.36rem;
   }
 
-  .rules-modal {
+  .rules-modal,
+  .multiplayer-modal {
     left: auto;
     right: 1rem;
     top: 1rem;
@@ -902,6 +1124,11 @@ button {
   }
 
   .rules-modal__body {
+    max-height: calc(100dvh - 7.2rem);
+    padding: 1.2rem;
+  }
+
+  .multiplayer-modal__body {
     max-height: calc(100dvh - 7.2rem);
     padding: 1.2rem;
   }
@@ -949,6 +1176,19 @@ button {
   .cheat-toggle {
     min-width: 44px;
     width: 44px;
+  }
+
+  .multiplayer-button {
+    min-width: 44px;
+    width: 44px;
+  }
+
+  .multiplayer-button small {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
   }
 
   .cheat-toggle small {

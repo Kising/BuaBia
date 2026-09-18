@@ -4,6 +4,8 @@
 
 每次博饼结果会保存在当前浏览器的 `localStorage` 中，可查看最近点数、奖项和累计中奖次数。记录仅保存在本机，不会上传至服务器。
 
+右上角可开启本地多人模式，支持 2–8 位玩家在同一台手机上轮流游玩。系统会保存当前轮次、按玩家统计奖励，并按配置的特殊状元顺序和同类余骰规则自动选出当前最大状元。游戏仅供娱乐，请勿参与赌博行为。
+
 ## 技术栈
 
 - Vite
@@ -75,6 +77,8 @@ npm run build
 │   ├── random.js
 │   ├── styles.css
 │   ├── physics/DiceScene.js
+│   ├── history/rollHistory.js
+│   ├── multiplayer/multiplayer.js
 │   ├── rules/bobingRules.js
 │   ├── rules/evaluateBobing.js
 │   ├── sound/BobingAudio.js
@@ -82,7 +86,9 @@ npm run build
 ├── e2e/physics.spec.js
 ├── test
 │   ├── diceLayout.test.js
-│   └── evaluateBobing.test.js
+│   ├── evaluateBobing.test.js
+│   ├── multiplayer.test.js
+│   └── rollHistory.test.js
 ├── package.json
 └── vite.config.js
 ```

@@ -57,6 +57,30 @@ test("cheat mode is persisted and marked in history", async ({ page }) => {
   await expect(page.locator(".history-cheat").first()).toHaveText("Cheat");
 });
 
+test("local multiplayer rotates players and restores the session", async ({ page }) => {
+  test.setTimeout(20_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:5173/");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+
+  await page.getByRole("button", { name: /多人/ }).click();
+  const names = page.locator(".player-name-fields input");
+  await names.nth(0).fill("阿明");
+  await names.nth(1).fill("小月");
+  await page.getByRole("button", { name: "开始多人博饼" }).click();
+  await expect(page.locator(".turn-banner__player")).toHaveText("阿明");
+  await page.getByRole("button", { name: "阿明 开始博饼" }).click();
+  await expect(page.getByRole("button", { name: "小月 开始博饼" })).toBeEnabled({ timeout: 8_000 });
+  await expect(page.locator(".history-player").first()).toHaveText("阿明");
+  await expect(page.locator(".scoreboard-player").nth(0)).toContainText("1 博");
+  await expect(page.getByText("游戏仅供娱乐，请勿参与赌博行为。").first()).toBeVisible();
+
+  await page.reload();
+  await expect(page.locator(".turn-banner__player")).toHaveText("小月");
+  await expect(page.getByRole("button", { name: "小月 开始博饼" })).toBeEnabled();
+});
+
 test("rule dice stay square and on one row", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:5173/");

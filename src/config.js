@@ -6,6 +6,7 @@ export const SITE_CONFIG = {
     soundEnabled: "bobing:sound-enabled",
     cheatMode: "bobing:cheat-mode",
     rollHistory: "bobing:roll-history",
+    multiplayerSession: "bobing:multiplayer-session",
   },
 };
 
@@ -18,7 +19,7 @@ export const GAME_CONFIG = {
   maximumRollDurationMs: 4700,
   stableDurationMs: 420,
   cheatFourProbability: 0.52,
-  maxHistoryEntries: 40,
+  maxHistoryEntries: 120,
   debugPanel: import.meta.env.DEV,
   bowlGlowMs: 1800,
 };
