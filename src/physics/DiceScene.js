@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import * as CANNON from "cannon-es";
 import { GAME_CONFIG, PHYSICS_CONFIG } from "../config.js";
-import { clamp, easeInOutCubic, randomBetween } from "../random.js";
+import { clamp, randomBetween } from "../random.js";
 
 const FACE_NORMALS = {
   1: new THREE.Vector3(0, 1, 0),
@@ -52,6 +52,25 @@ function targetQuaternionForTopValue(value, currentQuaternion = null) {
   return turn.multiply(align);
 }
 
+export function getTopValueFromQuaternion(quaternion) {
+  const orientation = new THREE.Quaternion(
+    quaternion.x,
+    quaternion.y,
+    quaternion.z,
+    quaternion.w,
+  );
+  let topValue = 1;
+  let highestY = -Infinity;
+  Object.entries(FACE_NORMALS).forEach(([value, normal]) => {
+    const y = normal.clone().applyQuaternion(orientation).y;
+    if (y > highestY) {
+      highestY = y;
+      topValue = Number(value);
+    }
+  });
+  return topValue;
+}
+
 export function createSettleTargets(count = 6) {
   const targets = [];
   const maxRadius = PHYSICS_CONFIG.settleRadius;
@@ -77,31 +96,6 @@ export function createSettleTargets(count = 6) {
   }
 
   return targets;
-}
-
-function assignNearestTargets(dice, targets) {
-  const pairs = [];
-  dice.forEach((die, dieIndex) => {
-    targets.forEach((target, targetIndex) => {
-      pairs.push({
-        dieIndex,
-        targetIndex,
-        distance: Math.hypot(die.mesh.position.x - target.x, die.mesh.position.z - target.y),
-      });
-    });
-  });
-  pairs.sort((a, b) => a.distance - b.distance);
-
-  const assignments = new Array(dice.length);
-  const usedDice = new Set();
-  const usedTargets = new Set();
-  for (const pair of pairs) {
-    if (usedDice.has(pair.dieIndex) || usedTargets.has(pair.targetIndex)) continue;
-    assignments[pair.dieIndex] = targets[pair.targetIndex];
-    usedDice.add(pair.dieIndex);
-    usedTargets.add(pair.targetIndex);
-  }
-  return assignments;
 }
 
 function createBowlPatternTexture() {
@@ -403,45 +397,44 @@ export class DiceScene {
       this.dice.push({
         mesh,
         body,
-        targetValue: 1,
-        settleStartQuaternion: new THREE.Quaternion(),
-        settleTargetQuaternion: new THREE.Quaternion(),
-        settleStartPosition: new THREE.Vector3(),
-        settleTargetPosition: new THREE.Vector3(),
+        cheatBias: false,
       });
     }
 
-    this.resetDice([1, 2, 3, 4, 5, 6], false);
+    this.resetDice({ toss: false, topValues: [1, 2, 3, 4, 5, 6] });
   }
 
-  resetDice(targets, toss = true) {
+  resetDice({ toss = true, topValues = [1, 2, 3, 4, 5, 6], cheatMode = false } = {}) {
     const size = PHYSICS_CONFIG.diceSize;
     const restingTargets = toss ? null : createSettleTargets(this.dice.length);
+    const motionScale = this.reducedMotion ? 0.32 : 1;
 
     this.dice.forEach((die, index) => {
       const angle = (index / this.dice.length) * Math.PI * 2 + randomBetween(-0.24, 0.24);
       const radius = randomBetween(0.05, 0.48);
       const x = toss ? Math.cos(angle) * radius : restingTargets[index].x;
       const z = toss ? Math.sin(angle) * radius : restingTargets[index].y;
-      const y = toss ? PHYSICS_CONFIG.throwHeight + randomBetween(0, 0.55) : size / 2 + 0.01;
+      const y = toss
+        ? PHYSICS_CONFIG.throwHeight * (this.reducedMotion ? 0.62 : 1) + randomBetween(0, 0.55) * motionScale
+        : size / 2 + 0.01;
 
-      die.targetValue = targets[index];
+      die.cheatBias = cheatMode && Math.random() < GAME_CONFIG.cheatFourProbability;
       die.body.wakeUp();
       die.body.position.set(x, y, z);
       die.body.velocity.set(
-        toss ? randomBetween(-1.8, 1.8) : 0,
-        toss ? randomBetween(-1.2, 0.2) : 0,
-        toss ? randomBetween(-1.8, 1.8) : 0,
+        toss ? randomBetween(-1.8, 1.8) * motionScale : 0,
+        toss ? randomBetween(-1.2, 0.2) * motionScale : 0,
+        toss ? randomBetween(-1.8, 1.8) * motionScale : 0,
       );
       die.body.angularVelocity.set(
-        toss ? randomBetween(-14, 14) : 0,
-        toss ? randomBetween(-15, 15) : 0,
-        toss ? randomBetween(-14, 14) : 0,
+        toss ? randomBetween(-14, 14) * motionScale : 0,
+        toss ? randomBetween(-15, 15) * motionScale : 0,
+        toss ? randomBetween(-14, 14) * motionScale : 0,
       );
       if (toss) {
         die.body.quaternion.setFromEuler(randomBetween(0, Math.PI), randomBetween(0, Math.PI), randomBetween(0, Math.PI));
       } else {
-        const targetQuaternion = targetQuaternionForTopValue(targets[index]);
+        const targetQuaternion = targetQuaternionForTopValue(topValues[index]);
         die.body.quaternion.set(
           targetQuaternion.x,
           targetQuaternion.y,
@@ -484,18 +477,17 @@ export class DiceScene {
     this.renderOnce();
   }
 
-  roll(targets) {
+  roll({ cheatMode = false } = {}) {
     if (this.rollState) return Promise.resolve();
 
-    this.resetDice(targets, !this.reducedMotion);
-    const duration = this.reducedMotion ? 1300 : GAME_CONFIG.throwDurationMs;
-    const settleDuration = this.reducedMotion ? 360 : GAME_CONFIG.settleDurationMs;
+    this.resetDice({ toss: true, cheatMode });
 
     this.rollState = {
       startAt: performance.now(),
-      duration,
-      settleDuration,
-      settleStarted: false,
+      minimumDuration: this.reducedMotion ? 700 : GAME_CONFIG.minimumRollDurationMs,
+      maximumDuration: this.reducedMotion ? 1300 : GAME_CONFIG.maximumRollDurationMs,
+      stableSince: null,
+      cheatMode,
       resolve: null,
     };
 
@@ -504,25 +496,6 @@ export class DiceScene {
     });
     this.startLoop();
     return promise;
-  }
-
-  startSettle(now) {
-    this.rollState.settleStarted = true;
-    this.rollState.settleAt = now;
-    const size = PHYSICS_CONFIG.diceSize;
-
-    const settleTargets = assignNearestTargets(this.dice, createSettleTargets(this.dice.length));
-
-    this.dice.forEach((die, index) => {
-      die.body.velocity.set(0, 0, 0);
-      die.body.angularVelocity.set(0, 0, 0);
-      die.body.sleep();
-      die.settleStartQuaternion.copy(die.mesh.quaternion);
-      die.settleTargetQuaternion.copy(targetQuaternionForTopValue(die.targetValue, die.mesh.quaternion));
-      die.settleStartPosition.copy(die.mesh.position);
-      const target = settleTargets[index];
-      die.settleTargetPosition.set(target.x, size / 2 - 0.02, target.y);
-    });
   }
 
   applyContainment(body) {
@@ -547,40 +520,91 @@ export class DiceScene {
     }
   }
 
+  applyDiceSeparation() {
+    const minimumGap = PHYSICS_CONFIG.diceSize * 1.04;
+    for (let first = 0; first < this.dice.length; first += 1) {
+      for (let second = first + 1; second < this.dice.length; second += 1) {
+        const a = this.dice[first].body;
+        const b = this.dice[second].body;
+        if (Math.abs(a.position.y - b.position.y) > PHYSICS_CONFIG.diceSize * 0.72) continue;
+        const dx = b.position.x - a.position.x;
+        const dz = b.position.z - a.position.z;
+        const distance = Math.hypot(dx, dz);
+        if (distance >= minimumGap) continue;
+        const nx = distance > 0.001 ? dx / distance : Math.cos(first + second);
+        const nz = distance > 0.001 ? dz / distance : Math.sin(first + second);
+        const impulse = (minimumGap - distance) * 0.13;
+        a.velocity.x -= nx * impulse;
+        a.velocity.z -= nz * impulse;
+        b.velocity.x += nx * impulse;
+        b.velocity.z += nz * impulse;
+        a.wakeUp();
+        b.wakeUp();
+      }
+    }
+  }
+
   update(now) {
     if (!this.rollState || document.hidden) return;
 
     const elapsed = now - this.rollState.startAt;
-    const settleStartTime = this.rollState.duration - this.rollState.settleDuration;
+    this.dice.forEach((die) => this.applyContainment(die.body));
+    if (elapsed > 1000) this.applyDiceSeparation();
+    this.world.step(PHYSICS_CONFIG.timeStep, Math.min(0.04, this.clock.getDelta()), PHYSICS_CONFIG.maxSubSteps);
 
-    if (!this.rollState.settleStarted && elapsed >= settleStartTime) {
-      this.startSettle(now);
-    }
-
-    if (!this.rollState.settleStarted) {
-      this.dice.forEach((die) => this.applyContainment(die.body));
-      this.world.step(PHYSICS_CONFIG.timeStep, Math.min(0.04, this.clock.getDelta()), PHYSICS_CONFIG.maxSubSteps);
-      this.dice.forEach((die) => {
-        this.applyContainment(die.body);
-        die.mesh.position.copy(die.body.position);
-        die.mesh.quaternion.copy(die.body.quaternion);
-      });
-    } else {
-      const progress = clamp((now - this.rollState.settleAt) / this.rollState.settleDuration, 0, 1);
-      const eased = easeInOutCubic(progress);
-      this.dice.forEach((die) => {
-        die.mesh.position.lerpVectors(die.settleStartPosition, die.settleTargetPosition, eased);
-        die.mesh.quaternion.copy(die.settleStartQuaternion).slerp(die.settleTargetQuaternion, eased);
-      });
-
-      if (progress >= 1) {
-        const resolve = this.rollState.resolve;
-        this.rollState = null;
-        this.renderOnce();
-        this.stopLoop();
-        resolve?.();
+    this.dice.forEach((die) => {
+      this.applyContainment(die.body);
+      if (this.rollState.cheatMode && die.cheatBias && elapsed > 500 && elapsed < 2800) {
+        const current = new THREE.Quaternion(
+          die.body.quaternion.x,
+          die.body.quaternion.y,
+          die.body.quaternion.z,
+          die.body.quaternion.w,
+        );
+        const target = targetQuaternionForTopValue(4, current);
+        current.slerp(target, elapsed > 1900 ? 0.075 : 0.035);
+        die.body.quaternion.set(current.x, current.y, current.z, current.w);
+        die.body.angularVelocity.scale(0.94, die.body.angularVelocity);
       }
+      if (elapsed > 3000) {
+        die.body.velocity.scale(0.96, die.body.velocity);
+        die.body.angularVelocity.scale(0.91, die.body.angularVelocity);
+      }
+      die.mesh.position.copy(die.body.position);
+      die.mesh.quaternion.copy(die.body.quaternion);
+    });
+
+    const isStable = this.dice.every(({ body }) =>
+      body.velocity.lengthSquared() < 0.018 && body.angularVelocity.lengthSquared() < 0.032,
+    );
+    if (elapsed >= this.rollState.minimumDuration && isStable) {
+      this.rollState.stableSince ??= now;
+    } else {
+      this.rollState.stableSince = null;
     }
+
+    if (
+      (this.rollState.stableSince && now - this.rollState.stableSince >= GAME_CONFIG.stableDurationMs)
+      || elapsed >= this.rollState.maximumDuration
+    ) {
+      this.finishRoll();
+    }
+  }
+
+  finishRoll() {
+    const resolve = this.rollState?.resolve;
+    this.dice.forEach((die) => {
+      die.body.velocity.set(0, 0, 0);
+      die.body.angularVelocity.set(0, 0, 0);
+      die.body.sleep();
+      die.mesh.position.copy(die.body.position);
+      die.mesh.quaternion.copy(die.body.quaternion);
+    });
+    const results = this.dice.map(({ body }) => getTopValueFromQuaternion(body.quaternion));
+    this.rollState = null;
+    this.renderOnce();
+    this.stopLoop();
+    resolve?.(results);
   }
 
   startLoop() {
@@ -618,6 +642,7 @@ export class DiceScene {
     }
     return {
       positions,
+      topValues: this.dice.map(({ body }) => getTopValueFromQuaternion(body.quaternion)),
       minimumDistance,
       maximumRadius: Math.max(...positions.map((position) => Math.hypot(position.x, position.z))),
     };

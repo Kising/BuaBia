@@ -4,6 +4,7 @@ export const SITE_CONFIG = {
   developer: "Kising Zhang",
   storageKeys: {
     soundEnabled: "bobing:sound-enabled",
+    cheatMode: "bobing:cheat-mode",
     rollHistory: "bobing:roll-history",
   },
 };
@@ -13,7 +14,10 @@ export const GAME_CONFIG = {
   resultDelayMs: 420,
   maxDevicePixelRatio: 2,
   throwDurationMs: 3000,
-  settleDurationMs: 1100,
+  minimumRollDurationMs: 2200,
+  maximumRollDurationMs: 4700,
+  stableDurationMs: 420,
+  cheatFourProbability: 0.72,
   maxHistoryEntries: 40,
   debugPanel: import.meta.env.DEV,
   bowlGlowMs: 1800,

@@ -109,6 +109,7 @@ button {
 }
 
 .icon-button,
+.cheat-toggle,
 .rules-button,
 .primary-action,
 .debug-panel button {
@@ -123,6 +124,7 @@ button {
 }
 
 .icon-button:focus-visible,
+.cheat-toggle:focus-visible,
 .rules-button:focus-visible,
 .primary-action:focus-visible,
 .debug-panel input:focus-visible,
@@ -138,6 +140,42 @@ button {
   color: var(--ink);
 }
 
+.cheat-toggle {
+  min-width: 58px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.28rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.42);
+  color: var(--muted);
+}
+
+.cheat-toggle span {
+  color: var(--rouge);
+  font-family: "Songti SC", "STSong", serif;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.cheat-toggle small {
+  font-size: 0.66rem;
+  font-weight: 700;
+}
+
+.cheat-toggle--active {
+  border-color: rgba(167, 31, 43, 0.5);
+  background: rgba(167, 31, 43, 0.1);
+  color: var(--rouge-deep);
+  box-shadow: inset 0 0 0 1px rgba(167, 31, 43, 0.08);
+}
+
+.cheat-toggle:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
 .rules-button {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.46);
@@ -146,7 +184,8 @@ button {
 }
 
 .rules-button:hover,
-.icon-button:hover {
+.icon-button:hover,
+.cheat-toggle:hover {
   background: rgba(255, 255, 255, 0.75);
   border-color: rgba(116, 23, 27, 0.28);
 }
@@ -355,19 +394,19 @@ button {
   overflow: hidden;
   border-radius: 8px;
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.62), transparent 55%),
+    url("./assets/dice-face-texture.png") center / 100% 100% no-repeat,
     #f4ebd7;
-  border: 1px solid rgba(91, 63, 52, 0.16);
-  box-shadow: 0 0.18rem 0.5rem rgba(57, 31, 25, 0.14);
+  border: 0;
+  box-shadow: 0 0.14rem 0.38rem rgba(57, 31, 25, 0.13);
   flex: 0 0 auto;
   align-self: center;
 }
 
 .mini-die--small {
-  width: 1.58rem;
-  height: 1.58rem;
+  width: 1.72rem;
+  height: 1.72rem;
   border-radius: 6px;
-  padding: 0.22rem;
+  padding: 0.26rem;
 }
 
 .mini-die--4 {
@@ -375,8 +414,8 @@ button {
 }
 
 .mini-die--blank {
-  border-style: dashed;
-  background: rgba(244, 235, 215, 0.28);
+  border: 1px dashed rgba(91, 63, 52, 0.22);
+  background: rgba(244, 235, 215, 0.22);
   box-shadow: none;
   opacity: 0.62;
 }
@@ -395,7 +434,7 @@ button {
 }
 
 .mini-die__pip {
-  width: 65%;
+  width: 46%;
   aspect-ratio: 1;
   place-self: center;
   border-radius: 50%;
@@ -542,6 +581,19 @@ button {
   font-size: 0.9rem;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.history-cheat {
+  display: inline-block;
+  margin-left: 0.36rem;
+  padding: 0.08rem 0.28rem;
+  border: 1px solid rgba(167, 31, 43, 0.25);
+  border-radius: 3px;
+  color: var(--rouge);
+  font-size: 0.58rem;
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: 0.1rem;
 }
 
 .history-item__result time {
@@ -889,6 +941,19 @@ button {
 
   .rules-button {
     padding-inline: 0.72rem;
+  }
+
+  .cheat-toggle {
+    min-width: 44px;
+    width: 44px;
+  }
+
+  .cheat-toggle small {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
   }
 
   .canvas-wrap {

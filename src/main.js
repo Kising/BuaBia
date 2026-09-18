@@ -1,6 +1,5 @@
 import "./styles.css";
 import { GAME_CONFIG, SITE_CONFIG } from "./config.js";
-import { randomDiceResults } from "./random.js";
 import { evaluateBobing } from "./rules/evaluateBobing.js";
 import { BOBING_RULES } from "./rules/bobingRules.js";
 import { BobingAudio } from "./sound/BobingAudio.js";
@@ -15,10 +14,12 @@ import {
 
 const app = document.querySelector("#app");
 const storedSound = localStorage.getItem(SITE_CONFIG.storageKeys.soundEnabled);
+const storedCheatMode = localStorage.getItem(SITE_CONFIG.storageKeys.cheatMode);
 const state = {
   rolling: false,
   hasRolled: false,
   soundEnabled: storedSound === null ? true : storedSound === "true",
+  cheatMode: storedCheatMode === "true",
   lastResult: null,
   history: loadRollHistory(
     localStorage,
@@ -36,6 +37,7 @@ app.innerHTML = `
       </a>
       <nav class="header-actions" aria-label="页面操作">
         <button class="icon-button sound-toggle" type="button" aria-label="关闭音效" aria-pressed="true">🔊</button>
+        <button class="cheat-toggle" type="button" aria-label="开启 Cheat 模式" aria-pressed="false" title="大幅提高红四出现概率"><span aria-hidden="true">四</span><small>Cheat</small></button>
         <button class="rules-button" type="button">博饼规则</button>
       </nav>
     </header>
@@ -160,6 +162,7 @@ const resultDescription = document.querySelector(".result-description");
 const resultDice = document.querySelector(".result-dice");
 const primaryAction = document.querySelector(".primary-action");
 const soundToggle = document.querySelector(".sound-toggle");
+const cheatToggle = document.querySelector(".cheat-toggle");
 const rulesButton = document.querySelector(".rules-button");
 const rulesModal = document.querySelector(".rules-modal");
 const rulesClose = document.querySelector(".rules-close");
@@ -196,11 +199,13 @@ if (GAME_CONFIG.debugPanel) {
 }
 
 syncSoundButton();
+syncCheatButton();
 renderHistory();
 historyPanel.open = state.history.length > 0;
 
 primaryAction.addEventListener("click", () => roll());
 soundToggle.addEventListener("click", toggleSound);
+cheatToggle.addEventListener("click", toggleCheatMode);
 rulesButton.addEventListener("click", openRules);
 rulesClose.addEventListener("click", closeRules);
 modalBackdrop.addEventListener("click", closeRules);
@@ -219,14 +224,15 @@ async function roll() {
   resultDescription.textContent = "骰声入碗，稍候开奖。";
   resultDice.innerHTML = "";
   primaryAction.disabled = true;
+  cheatToggle.disabled = true;
   primaryAction.textContent = "博饼中……";
 
   await audio.unlock();
   audio.playStartChime();
 
-  const dice = randomDiceResults(6);
+  const cheatModeForRoll = state.cheatMode;
+  const dice = await scene.roll({ cheatMode: cheatModeForRoll });
   const result = evaluateBobing(dice);
-  await scene.roll(dice);
 
   window.setTimeout(() => {
     state.lastResult = result;
@@ -236,11 +242,14 @@ async function roll() {
       SITE_CONFIG.storageKeys.rollHistory,
       result,
       GAME_CONFIG.maxHistoryEntries,
+      Date.now(),
+      { cheatMode: cheatModeForRoll },
     );
     renderHistory();
     state.rolling = false;
     state.hasRolled = true;
     primaryAction.disabled = false;
+    cheatToggle.disabled = false;
     primaryAction.textContent = "再博一次";
   }, GAME_CONFIG.resultDelayMs);
 }
@@ -265,6 +274,12 @@ function renderHistory() {
     resultBlock.className = "history-item__result";
     const name = document.createElement("strong");
     name.textContent = entry.displayName;
+    if (entry.cheatMode) {
+      const cheatBadge = document.createElement("span");
+      cheatBadge.className = "history-cheat";
+      cheatBadge.textContent = "Cheat";
+      name.append(cheatBadge);
+    }
     const time = document.createElement("time");
     time.dateTime = new Date(entry.timestamp).toISOString();
     time.textContent = new Intl.DateTimeFormat("zh-CN", {
@@ -363,6 +378,19 @@ function syncSoundButton() {
   soundToggle.textContent = state.soundEnabled ? "🔊" : "🔇";
   soundToggle.setAttribute("aria-label", state.soundEnabled ? "关闭音效" : "开启音效");
   soundToggle.setAttribute("aria-pressed", String(state.soundEnabled));
+}
+
+function toggleCheatMode() {
+  if (state.rolling) return;
+  state.cheatMode = !state.cheatMode;
+  localStorage.setItem(SITE_CONFIG.storageKeys.cheatMode, String(state.cheatMode));
+  syncCheatButton();
+}
+
+function syncCheatButton() {
+  cheatToggle.classList.toggle("cheat-toggle--active", state.cheatMode);
+  cheatToggle.setAttribute("aria-label", state.cheatMode ? "关闭 Cheat 模式" : "开启 Cheat 模式");
+  cheatToggle.setAttribute("aria-pressed", String(state.cheatMode));
 }
 
 function openRules() {

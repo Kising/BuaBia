@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { PHYSICS_CONFIG } from "../src/config.js";
-import { createSettleTargets } from "../src/physics/DiceScene.js";
+import * as THREE from "three";
+import { createSettleTargets, getTopValueFromQuaternion } from "../src/physics/DiceScene.js";
 
 describe("createSettleTargets", () => {
   it("keeps all six dice separated and inside the bowl", () => {
@@ -20,5 +21,23 @@ describe("createSettleTargets", () => {
         }
       }
     }
+  });
+});
+
+describe("getTopValueFromQuaternion", () => {
+  const faceNormals = {
+    1: new THREE.Vector3(0, 1, 0),
+    2: new THREE.Vector3(0, 0, 1),
+    3: new THREE.Vector3(1, 0, 0),
+    4: new THREE.Vector3(-1, 0, 0),
+    5: new THREE.Vector3(0, 0, -1),
+    6: new THREE.Vector3(0, -1, 0),
+  };
+
+  it("reads every upward-facing physical side correctly", () => {
+    Object.entries(faceNormals).forEach(([value, normal]) => {
+      const quaternion = new THREE.Quaternion().setFromUnitVectors(normal, new THREE.Vector3(0, 1, 0));
+      expect(getTopValueFromQuaternion(quaternion)).toBe(Number(value));
+    });
   });
 });

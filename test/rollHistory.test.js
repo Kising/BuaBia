@@ -20,7 +20,8 @@ describe("roll history", () => {
     const storage = createStorage();
     const result = { dice: [1, 2, 3, 4, 5, 6], tier: "对堂", displayName: "对堂", rank: 2 };
 
-    appendRollHistory(storage, "history", result, 2, 100);
+    const first = appendRollHistory(storage, "history", result, 2, 100, { cheatMode: true });
+    expect(first[0].cheatMode).toBe(true);
     appendRollHistory(storage, "history", { ...result, displayName: "一秀" }, 2, 200);
     const history = appendRollHistory(storage, "history", { ...result, displayName: "二举" }, 2, 300);
 

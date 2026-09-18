@@ -13,6 +13,7 @@ function normalizeEntry(entry) {
     tier: entry.tier.slice(0, 20),
     displayName: entry.displayName.slice(0, 30),
     rank: Number.isFinite(entry.rank) ? entry.rank : 99,
+    cheatMode: entry.cheatMode === true,
   };
 }
 
@@ -26,7 +27,7 @@ export function loadRollHistory(storage, key, limit = 40) {
   }
 }
 
-export function appendRollHistory(storage, key, result, limit = 40, timestamp = Date.now()) {
+export function appendRollHistory(storage, key, result, limit = 40, timestamp = Date.now(), metadata = {}) {
   const entry = {
     id: `${timestamp}-${result.dice.join("")}`,
     timestamp,
@@ -34,6 +35,7 @@ export function appendRollHistory(storage, key, result, limit = 40, timestamp = 
     tier: result.tier,
     displayName: result.displayName,
     rank: result.rank,
+    cheatMode: metadata.cheatMode === true,
   };
   const history = [entry, ...loadRollHistory(storage, key, limit)].slice(0, limit);
 
