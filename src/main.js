@@ -6,6 +6,12 @@ import { BOBING_RULES } from "./rules/bobingRules.js";
 import { BobingAudio } from "./sound/BobingAudio.js";
 import { DiceScene } from "./physics/DiceScene.js";
 import { diceFace, diceSequence } from "./ui/diceMarkup.js";
+import {
+  appendRollHistory,
+  clearRollHistory,
+  loadRollHistory,
+  summarizeRollHistory,
+} from "./history/rollHistory.js";
 
 const app = document.querySelector("#app");
 const storedSound = localStorage.getItem(SITE_CONFIG.storageKeys.soundEnabled);
@@ -14,6 +20,11 @@ const state = {
   hasRolled: false,
   soundEnabled: storedSound === null ? true : storedSound === "true",
   lastResult: null,
+  history: loadRollHistory(
+    localStorage,
+    SITE_CONFIG.storageKeys.rollHistory,
+    GAME_CONFIG.maxHistoryEntries,
+  ),
 };
 
 app.innerHTML = `
@@ -49,6 +60,25 @@ app.innerHTML = `
 
         <button class="primary-action" type="button">开始博饼</button>
         <p class="hint">支持 Space / Enter 触发</p>
+
+        <details class="history-panel">
+          <summary class="history-toggle">
+            <span>
+              <small>History</small>
+              <strong>博饼记录</strong>
+            </span>
+            <span class="history-count">0 博</span>
+          </summary>
+          <div class="history-content">
+            <p class="history-summary"></p>
+            <ol class="history-list" aria-label="最近博饼记录"></ol>
+            <p class="history-empty">还没有记录，先博一回。</p>
+            <footer class="history-footer">
+              <span>记录仅保存在此设备</span>
+              <button class="history-clear" type="button" hidden>清空</button>
+            </footer>
+          </div>
+        </details>
 
         <form class="debug-panel" hidden>
           <label for="debug-dice">Debug Panel</label>
@@ -135,6 +165,14 @@ const modalBackdrop = document.querySelector(".modal-backdrop");
 const debugPanel = document.querySelector(".debug-panel");
 const debugOutput = document.querySelector(".debug-output");
 const confetti = document.querySelector(".confetti");
+const historyPanel = document.querySelector(".history-panel");
+const historyCount = document.querySelector(".history-count");
+const historySummary = document.querySelector(".history-summary");
+const historyList = document.querySelector(".history-list");
+const historyEmpty = document.querySelector(".history-empty");
+const historyClear = document.querySelector(".history-clear");
+let clearHistoryArmed = false;
+let clearHistoryTimer = null;
 
 const audio = new BobingAudio({ enabled: state.soundEnabled });
 const scene = new DiceScene(canvas, {
@@ -156,6 +194,8 @@ if (GAME_CONFIG.debugPanel) {
 }
 
 syncSoundButton();
+renderHistory();
+historyPanel.open = state.history.length > 0;
 
 primaryAction.addEventListener("click", () => roll());
 soundToggle.addEventListener("click", toggleSound);
@@ -164,6 +204,7 @@ rulesClose.addEventListener("click", closeRules);
 modalBackdrop.addEventListener("click", closeRules);
 document.addEventListener("keydown", handleKeyDown);
 debugPanel.addEventListener("submit", handleDebug);
+historyClear.addEventListener("click", handleClearHistory);
 
 async function roll() {
   if (state.rolling) return;
@@ -188,11 +229,79 @@ async function roll() {
   window.setTimeout(() => {
     state.lastResult = result;
     showResult(result);
+    state.history = appendRollHistory(
+      localStorage,
+      SITE_CONFIG.storageKeys.rollHistory,
+      result,
+      GAME_CONFIG.maxHistoryEntries,
+    );
+    renderHistory();
     state.rolling = false;
     state.hasRolled = true;
     primaryAction.disabled = false;
     primaryAction.textContent = "再博一次";
   }, GAME_CONFIG.resultDelayMs);
+}
+
+function renderHistory() {
+  const summary = summarizeRollHistory(state.history, BOBING_RULES.labels.none);
+  historyCount.textContent = `${summary.total} 博`;
+  historySummary.textContent = summary.total
+    ? summary.rewarded
+      ? `中奖 ${summary.rewarded} 次${summary.topRewards.length ? ` · ${summary.topRewards.join(" · ")}` : ""}`
+      : "尚未中奖，再博一次试试。"
+    : "";
+  historyEmpty.hidden = summary.total > 0;
+  historyClear.hidden = summary.total === 0;
+  historyList.replaceChildren();
+
+  state.history.slice(0, 12).forEach((entry) => {
+    const item = document.createElement("li");
+    item.className = "history-item";
+
+    const resultBlock = document.createElement("div");
+    resultBlock.className = "history-item__result";
+    const name = document.createElement("strong");
+    name.textContent = entry.displayName;
+    const time = document.createElement("time");
+    time.dateTime = new Date(entry.timestamp).toISOString();
+    time.textContent = new Intl.DateTimeFormat("zh-CN", {
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(entry.timestamp);
+    resultBlock.append(name, time);
+
+    const dice = document.createElement("div");
+    dice.className = "history-item__dice";
+    dice.setAttribute("aria-label", `骰子点数 ${entry.dice.join("、")}`);
+    dice.innerHTML = diceSequence(entry.dice, { small: true });
+    item.append(resultBlock, dice);
+    historyList.append(item);
+  });
+}
+
+function handleClearHistory() {
+  if (!clearHistoryArmed) {
+    clearHistoryArmed = true;
+    historyClear.textContent = "再次点击确认";
+    window.clearTimeout(clearHistoryTimer);
+    clearHistoryTimer = window.setTimeout(resetClearHistoryButton, 3000);
+    return;
+  }
+
+  state.history = clearRollHistory(localStorage, SITE_CONFIG.storageKeys.rollHistory);
+  resetClearHistoryButton();
+  renderHistory();
+}
+
+function resetClearHistoryButton() {
+  clearHistoryArmed = false;
+  historyClear.textContent = "清空";
+  window.clearTimeout(clearHistoryTimer);
+  clearHistoryTimer = null;
 }
 
 function showResult(result) {

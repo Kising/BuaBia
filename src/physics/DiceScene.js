@@ -39,8 +39,14 @@ function threeVecFromArray(values) {
   return new THREE.Vector3(values[0], values[1], values[2]);
 }
 
-function targetQuaternionForTopValue(value) {
+function targetQuaternionForTopValue(value, currentQuaternion = null) {
   const up = new THREE.Vector3(0, 1, 0);
+  if (currentQuaternion) {
+    const currentFaceNormal = FACE_NORMALS[value].clone().applyQuaternion(currentQuaternion);
+    const correction = new THREE.Quaternion().setFromUnitVectors(currentFaceNormal, up);
+    return correction.multiply(currentQuaternion.clone()).normalize();
+  }
+
   const align = new THREE.Quaternion().setFromUnitVectors(FACE_NORMALS[value], up);
   const turn = new THREE.Quaternion().setFromAxisAngle(up, randomBetween(0, Math.PI * 2));
   return turn.multiply(align);
@@ -377,10 +383,10 @@ export class DiceScene {
       const body = new CANNON.Body({
         mass: 1,
         shape,
-        linearDamping: 0.22,
-        angularDamping: 0.28,
-        sleepSpeedLimit: 0.16,
-        sleepTimeLimit: 0.35,
+        linearDamping: 0.2,
+        angularDamping: 0.18,
+        sleepSpeedLimit: 0.08,
+        sleepTimeLimit: 0.55,
       });
       body.addEventListener("collide", (event) => {
         if (!this.rollState) return;
@@ -512,7 +518,7 @@ export class DiceScene {
       die.body.angularVelocity.set(0, 0, 0);
       die.body.sleep();
       die.settleStartQuaternion.copy(die.mesh.quaternion);
-      die.settleTargetQuaternion.copy(targetQuaternionForTopValue(die.targetValue));
+      die.settleTargetQuaternion.copy(targetQuaternionForTopValue(die.targetValue, die.mesh.quaternion));
       die.settleStartPosition.copy(die.mesh.position);
       const target = settleTargets[index];
       die.settleTargetPosition.set(target.x, size / 2 - 0.02, target.y);

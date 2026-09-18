@@ -4,6 +4,7 @@ export const SITE_CONFIG = {
   developer: "Kising Zhang",
   storageKeys: {
     soundEnabled: "bobing:sound-enabled",
+    rollHistory: "bobing:roll-history",
   },
 };
 
@@ -11,8 +12,9 @@ export const GAME_CONFIG = {
   diceCount: 6,
   resultDelayMs: 420,
   maxDevicePixelRatio: 2,
-  throwDurationMs: 3400,
-  settleDurationMs: 780,
+  throwDurationMs: 3000,
+  settleDurationMs: 1100,
+  maxHistoryEntries: 40,
   debugPanel: import.meta.env.DEV,
   bowlGlowMs: 1800,
 };
