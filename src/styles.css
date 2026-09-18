@@ -387,17 +387,17 @@ button {
   --pip: #31231f;
   width: 2.35rem;
   height: 2.35rem;
-  display: inline-grid;
-  grid-template: repeat(3, minmax(0, 1fr)) / repeat(3, minmax(0, 1fr));
-  gap: 0;
-  padding: 0.32rem;
-  overflow: hidden;
+  display: inline-block;
+  position: relative;
+  overflow: visible;
   border-radius: 8px;
   background:
     url("./assets/dice-face-texture.png") center / 100% 100% no-repeat,
     #f4ebd7;
-  border: 0;
-  box-shadow: 0 0.14rem 0.38rem rgba(57, 31, 25, 0.13);
+  border: 1px solid rgba(96, 68, 57, 0.12);
+  box-shadow:
+    0.12rem 0.15rem 0 #d7c9b1,
+    0 0.24rem 0.48rem rgba(57, 31, 25, 0.16);
   flex: 0 0 auto;
   align-self: center;
 }
@@ -406,7 +406,6 @@ button {
   width: 1.72rem;
   height: 1.72rem;
   border-radius: 6px;
-  padding: 0.26rem;
 }
 
 .mini-die--4 {
@@ -425,8 +424,10 @@ button {
 }
 
 .mini-die__wild {
-  grid-area: 1 / 1 / 4 / 4;
-  place-self: center;
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
   color: var(--rouge);
   font-family: ui-sans-serif, system-ui, sans-serif;
   font-size: 0.72rem;
@@ -434,20 +435,22 @@ button {
 }
 
 .mini-die__pip {
-  width: 46%;
+  position: absolute;
+  width: 16%;
   aspect-ratio: 1;
-  place-self: center;
+  transform: translate(-50%, -50%);
   border-radius: 50%;
   background: var(--pip);
+  box-shadow: inset 0 0.05rem 0.08rem rgba(0, 0, 0, 0.22);
 }
 
-.mini-die__pip--center { grid-area: 2 / 2; }
-.mini-die__pip--top-left { grid-area: 1 / 1; }
-.mini-die__pip--top-right { grid-area: 1 / 3; }
-.mini-die__pip--middle-left { grid-area: 2 / 1; }
-.mini-die__pip--middle-right { grid-area: 2 / 3; }
-.mini-die__pip--bottom-left { grid-area: 3 / 1; }
-.mini-die__pip--bottom-right { grid-area: 3 / 3; }
+.mini-die__pip--center { left: 50%; top: 50%; }
+.mini-die__pip--top-left { left: 28%; top: 28%; }
+.mini-die__pip--top-right { left: 72%; top: 28%; }
+.mini-die__pip--middle-left { left: 28%; top: 50%; }
+.mini-die__pip--middle-right { left: 72%; top: 50%; }
+.mini-die__pip--bottom-left { left: 28%; top: 72%; }
+.mini-die__pip--bottom-right { left: 72%; top: 72%; }
 
 .primary-action {
   width: 100%;

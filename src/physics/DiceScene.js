@@ -562,7 +562,7 @@ export class DiceScene {
           die.body.quaternion.w,
         );
         const target = targetQuaternionForTopValue(4, current);
-        current.slerp(target, elapsed > 1900 ? 0.075 : 0.035);
+        current.slerp(target, elapsed > 1900 ? 0.055 : 0.025);
         die.body.quaternion.set(current.x, current.y, current.z, current.w);
         die.body.angularVelocity.scale(0.94, die.body.angularVelocity);
       }

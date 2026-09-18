@@ -17,7 +17,7 @@ export const GAME_CONFIG = {
   minimumRollDurationMs: 2200,
   maximumRollDurationMs: 4700,
   stableDurationMs: 420,
-  cheatFourProbability: 0.72,
+  cheatFourProbability: 0.52,
   maxHistoryEntries: 40,
   debugPanel: import.meta.env.DEV,
   bowlGlowMs: 1800,
