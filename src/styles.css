@@ -332,7 +332,12 @@ button {
 .rule-dice {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.42rem;
+}
+
+.rule-dice {
+  flex-wrap: nowrap;
 }
 
 .result-dice {
@@ -342,27 +347,51 @@ button {
 .mini-die {
   --pip: #31231f;
   width: 2.35rem;
-  aspect-ratio: 1;
+  height: 2.35rem;
   display: inline-grid;
-  grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+  grid-template: repeat(3, minmax(0, 1fr)) / repeat(3, minmax(0, 1fr));
   gap: 0;
   padding: 0.32rem;
+  overflow: hidden;
   border-radius: 8px;
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.62), transparent 55%),
     #f4ebd7;
   border: 1px solid rgba(91, 63, 52, 0.16);
   box-shadow: 0 0.18rem 0.5rem rgba(57, 31, 25, 0.14);
+  flex: 0 0 auto;
+  align-self: center;
 }
 
 .mini-die--small {
   width: 1.58rem;
+  height: 1.58rem;
   border-radius: 6px;
   padding: 0.22rem;
 }
 
 .mini-die--4 {
   --pip: #a71f2b;
+}
+
+.mini-die--blank {
+  border-style: dashed;
+  background: rgba(244, 235, 215, 0.28);
+  box-shadow: none;
+  opacity: 0.62;
+}
+
+.mini-die--wild {
+  place-items: center;
+}
+
+.mini-die__wild {
+  grid-area: 1 / 1 / 4 / 4;
+  place-self: center;
+  color: var(--rouge);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 800;
 }
 
 .mini-die__pip {
@@ -528,6 +557,7 @@ button {
 
 .history-item__dice .mini-die--small {
   width: clamp(1.2rem, 4.3vw, 1.48rem);
+  height: clamp(1.2rem, 4.3vw, 1.48rem);
   padding: 0.18rem;
   border-radius: 5px;
   box-shadow: none;
@@ -708,6 +738,18 @@ button {
   font-size: 0.94rem;
 }
 
+.rule-order,
+.comparison-note {
+  margin-bottom: 0.8rem !important;
+  font-size: 0.9rem;
+}
+
+.comparison-note {
+  margin-top: 0.85rem !important;
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--gold-soft);
+}
+
 .developer {
   padding-bottom: 0.3rem;
 }
@@ -786,6 +828,7 @@ button {
 
   .history-item__dice .mini-die--small {
     width: 1.36rem;
+    height: 1.36rem;
   }
 
   .rules-modal {

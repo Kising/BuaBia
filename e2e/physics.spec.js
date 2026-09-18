@@ -37,3 +37,27 @@ test("dice remain separated and inside the bowl across repeated rolls", async ({
   expect(browserErrors).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
+
+test("rule dice stay square and on one row", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:5173/");
+  await page.getByRole("button", { name: "博饼规则" }).click();
+  const ruleDiceLayout = await page.locator(".rule-dice").evaluateAll((groups) =>
+    groups.map((group) => {
+      const dice = [...group.querySelectorAll(".mini-die")].map((die) => die.getBoundingClientRect());
+      return {
+        count: dice.length,
+        square: dice.every((die) => Math.abs(die.width - die.height) < 1.5),
+        sameRow: Math.max(...dice.map((die) => die.top)) - Math.min(...dice.map((die) => die.top)) < 1.5,
+      };
+    }),
+  );
+  expect(
+    ruleDiceLayout.every((group) => group.count === 6 && group.square && group.sameRow),
+    JSON.stringify(ruleDiceLayout),
+  ).toBe(true);
+  const baseZhuangyuan = page.locator(".rule-row").filter({
+    has: page.getByText("状元", { exact: true }),
+  });
+  await expect(baseZhuangyuan.locator(".mini-die--blank")).toHaveCount(2);
+});

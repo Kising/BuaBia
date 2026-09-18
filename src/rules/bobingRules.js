@@ -11,9 +11,9 @@ export const BOBING_RULES = {
     none: 7,
   },
   zhuangyuanSubtypeOrder: [
+    "状元插金花",
     "六勃红",
     "六勃黑",
-    "状元插金花",
     "五红",
     "五子",
     "四红",

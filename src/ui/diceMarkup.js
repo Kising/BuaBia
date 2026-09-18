@@ -8,10 +8,18 @@ const PIPS = {
 };
 
 export function diceFace(value, { small = false } = {}) {
+  const sizeClass = small ? "mini-die--small" : "";
+  if (value === null) {
+    return `<span class="mini-die ${sizeClass} mini-die--blank" aria-label="空位"></span>`;
+  }
+  if (value === "X") {
+    return `<span class="mini-die ${sizeClass} mini-die--wild" aria-label="任意点数"><span class="mini-die__wild">X</span></span>`;
+  }
+
   const dots = PIPS[value]
     .map((position) => `<span class="mini-die__pip mini-die__pip--${position}"></span>`)
     .join("");
-  return `<span class="mini-die ${small ? "mini-die--small" : ""} mini-die--${value}" aria-label="${value}点">${dots}</span>`;
+  return `<span class="mini-die ${sizeClass} mini-die--${value}" aria-label="${value}点">${dots}</span>`;
 }
 
 export function diceSequence(values, options) {
